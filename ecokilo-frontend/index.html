@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoKilo | Smart Waste Recycling</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* ═══════════════════════════════════════════════
+       CSS VARIABLES & RESET
+    ═══════════════════════════════════════════════ */
+        :root {
+            --green: #138808;
+            --green-light: #e6f6e6;
+            --green-dark: #0d6606;
+            --gold: #f59e0b;
+            --blue: #3b82f6;
+            --red: #ef4444;
+            --bg: #f0f7f0;
+            --surface: #ffffff;
+            --border: #d1e7d1;
+            --text: #1a2e1a;
+            --text-muted: #6b7c6b;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 22px;
+            --shadow: 0 4px 24px rgba(19, 136, 8, 0.10);
+            --shadow-lg: 0 8px 40px rgba(19, 136, 8, 0.16);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Loading Overlay ── */
+        #authLoader {
+            position: fixed;
+            inset: 0;
+            background: #f0f7f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            flex-direction: column;
+            gap: 16px;
+            transition: opacity 0.4s ease;
+        }
+
+        #authLoader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader-leaf {
+            width: 52px;
+            height: 52px;
+            background: var(--green);
+            border-radius: 60% 10% 60% 10%;
+            animation: leafSpin 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes leafSpin {
+            from {
+                transform: rotate(-20deg) scale(0.9);
+            }
+
+            to {
+                transform: rotate(20deg) scale(1.1);
+            }
+        }
+
+        #authLoader p {
+            color: var(--green);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        /* ── Navbar ── */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+
+        .nav-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--green);
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+
+        .logo .brand-icon {
+            font-size: 1.6rem;
+        }
+
+        .logo span span {
+            color: var(--text);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .nav-links a {
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: var(--green-light);
+            color: var(--green);
+        }
+
+        .nav-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .wallet-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--green-light);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: var(--green);
+            cursor: default;
+        }
+
+        .profile-circle img {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--green);
+            object-fit: cover;
+            display: block;
+            transition: transform 0.2s;
+        }
+
+        .profile-circle img:hover {
+            transform: scale(1.08);
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.6rem;
+            color: var(--text);
+        }
+
+        /* ── Dashboard ── */
+        .dashboard-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .welcome-text h1 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .welcome-text p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        /* ── Button ── */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--green);
+            color: #fff;
+            border: none;
+            padding: 12px 22px;
+            border-radius: var(--radius-md);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            background: var(--green-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-outline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: transparent;
+            color: var(--green);
+            border: 2px solid var(--green);
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-outline:hover {
+            background: var(--green-light);
+        }
+
+        .w-100 {
+            width: 100%;
+        }
+
+        .mt-4 {
+            margin-top: 16px;
+        }
+
+        /* pulse effect */
+        .pulse-eff {
+            position: relative;
+            overflow: visible;
+        }
+
+        .pulse-eff::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: inherit;
+            border: 2px solid var(--green);
+            opacity: 0;
+            animation: pulse 2s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: scale(1.12);
+                opacity: 0;
+            }
+        }
+
+        /* ── Glass cards ── */
+        .glass {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* ── Impact Metrics ── */
+        .impact-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .metric-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .leaf-bg {
+            background: #e6f6e6;
+            color: var(--green);
+        }
+
+        .coin-bg {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .points-bg {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+
+        .tree-bg {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .metric-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-top: 2px;
+        }
+
+        .metric-value .unit {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* ── Dashboard Grid ── */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .section-header h2 {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .view-all {
+            font-size: 0.82rem;
+            color: var(--green);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .view-all:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Recent Activity ── */
+        .recent-activity {
+            padding: 22px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item p {
+            margin: 0;
+        }
+
+        .activity-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .activity-date {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 3px !important;
+        }
+
+        .status-pill {
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* ── Live Tracking ── */
+        .live-tracking {
+            padding: 22px;
+            grid-column: 1 / -1;
+        }
+
+        .badge {
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .badge.accepted {
+            background: #e6f6e6;
+            color: var(--green);
+        }
+
+        .badge.pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .update-badge {
+            background: #fee2e2;
+            color: var(--red);
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            animation: blink 1.5s ease infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* ── Market Prices ── */
+        .market-prices {
+            padding: 22px;
+        }
+
+        .price-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .price-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .item-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+
+        .item-name img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .item-rate {
+            font-weight: 700;
+            color: var(--green);
+            font-size: 0.9rem;
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(24px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .close-modal {
+            background: var(--bg);
+            border: none;
+            cursor: pointer;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: var(--text-muted);
+            transition: background 0.2s;
+        }
+
+        .close-modal:hover {
+            background: #fecaca;
+            color: var(--red);
+        }
+
+        /* ── Form Styles ── */
+        .pickup-form {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .pickup-form input[type="date"],
+        .pickup-form select {
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            color: var(--text);
+            background: var(--surface);
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .pickup-form input:focus,
+        .pickup-form select:focus {
+            border-color: var(--green);
+        }
+
+        .waste-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .waste-checkbox input {
+            display: none;
+        }
+
+        .checkbox-visual {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 16px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            background: var(--surface);
+        }
+
+        .waste-checkbox input:checked+.checkbox-visual {
+            border-color: var(--green);
+            background: var(--green-light);
+            color: var(--green);
+        }
+
+        .checkbox-visual:hover {
+            border-color: var(--green);
+        }
+
+        /* ── Toast ── */
+        .eco-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 22px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            z-index: 9999;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transition: opacity 0.4s ease;
+            animation: toastIn 0.3s ease;
+        }
+
+        @keyframes toastIn {
+            from {
+                transform: translateY(12px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
+            .impact-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 64px;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                background: var(--surface);
+                border-bottom: 1px solid var(--border);
+                padding: 12px;
+                gap: 4px;
+                z-index: 99;
+            }
+
+            .nav-links.open {
+                display: flex;
+            }
+
+            .menu-toggle {
+                display: block;
+                margin-left: auto;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .impact-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .live-tracking {
+                grid-column: 1 / -1 !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .impact-metrics {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .welcome-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ── Auth Loading Overlay ── -->
+    <div id="authLoader">
+        <div class="loader-leaf"></div>
+        <p>Loading EcoKilo...</p>
+    </div>
+
+    <!-- ════════════════════════════════════
+       NAVBAR
+  ════════════════════════════════════ -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="ph-fill ph-leaf brand-icon"></i>
+                <span>Eco<span>Kilo</span></span>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html" class="active">Dashboard</a>
+                <a href="pickups.html">Pickups</a>
+                <a href="rewards.html">Rewards</a>
+                <a href="leaderboard.html">Leaderboard</a>
+            </div>
+            <div class="nav-profile">
+                <div class="wallet-badge" title="Wallet Balance">
+                    <i class="ph ph-wallet"></i>
+                    <span id="navWalletBalance">₹ -.--</span>
+                </div>
+                <div class="profile-circle">
+                    <a href="profile.html">
+                        <img id="navProfileImage"
+                            src="https://ui-avatars.com/api/?name=User&background=138808&color=fff"
+                            alt="User Profile" />
+                    </a>
+                </div>
+                <button class="btn-outline" id="signOutBtn" style="padding:6px 14px;font-size:0.82rem;">
+                    Sign Out
+                </button>
+            </div>
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ════════════════════════════════════
+       MAIN DASHBOARD
+  ════════════════════════════════════ -->
+    <main class="dashboard-container" id="dashboardMain" style="display:none;">
+
+        <!-- Welcome -->
+        <header class="welcome-header">
+            <div class="welcome-text">
+                <h1 id="welcomeHeading">Namaste! 🙏</h1>
+                <p>Ready to turn your waste into wealth today?</p>
+            </div>
+            <button class="btn-primary pulse-eff" id="schedulePickupBtn">
+                <i class="ph ph-truck"></i> Schedule Pickup
+            </button>
+        </header>
+
+        <!-- Impact Metrics -->
+        <section class="impact-metrics">
+            <div class="metric-card glass">
+                <div class="metric-icon leaf-bg"><i class="ph ph-recycle"></i></div>
+                <div class="metric-info">
+                    <p class="metric-label">Plastic Recycled</p>
+                    <h2 class="metric-value" id="metricPlastic">— <span class="unit">kg</span></h2>
+                </div>
+            </div>
+            <div class="metric-card glass">
+                <div class="metric-icon coin-bg"><i class="ph ph-coins"></i></div>
+                <div class="metric-info">
+                    <p class="metric-label">Total Earnings</p>
+                    <h2 class="metric-value" id="metricEarnings">₹ —</h2>
+                </div>
+            </div>
+            <div class="metric-card glass">
+                <div class="metric-icon points-bg"><i class="ph ph-star"></i></div>
+                <div class="metric-info">
+                    <p class="metric-label">Eco Points</p>
+                    <h2 class="metric-value" id="metricPoints">— <span class="unit">pts</span></h2>
+                </div>
+            </div>
+            <div class="metric-card glass">
+                <div class="metric-icon tree-bg"><i class="ph ph-tree"></i></div>
+                <div class="metric-info">
+                    <p class="metric-label">Trees Saved</p>
+                    <h2 class="metric-value" id="metricTrees">—</h2>
+                </div>
+            </div>
+        </section>
+
+        <!-- Grid -->
+        <div class="dashboard-grid">
+
+            <!-- Recent Pickups -->
+            <section class="recent-activity glass">
+                <div class="section-header">
+                    <h2>Recent Pickups</h2>
+                    <a href="pickups.html" class="view-all">View All</a>
+                </div>
+                <div class="activity-list" id="householdActivityList">
+                    <p style="color:var(--text-muted);padding:10px;">Loading your recent pickups...</p>
+                </div>
+            </section>
+
+            <!-- Market Prices -->
+            <section class="market-prices glass">
+                <div class="section-header">
+                    <h2>Today's Scrap Rates</h2>
+                    <span class="update-badge">Live</span>
+                </div>
+                <div class="price-list">
+                    <div class="price-item">
+                        <div class="item-name">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3003/3003975.png" alt="PET" />
+                            <span>PET Bottles</span>
+                        </div>
+                        <div class="item-rate">₹30 / kg</div>
+                    </div>
+                    <div class="price-item">
+                        <div class="item-name">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3752/3752317.png" alt="Cardboard" />
+                            <span>Cardboard</span>
+                        </div>
+                        <div class="item-rate">₹12 / kg</div>
+                    </div>
+                    <div class="price-item">
+                        <div class="item-name">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3238/3238018.png" alt="Metals" />
+                            <span>Mixed Metals</span>
+                        </div>
+                        <div class="item-rate">₹45 / kg</div>
+                    </div>
+                    <div class="price-item">
+                        <div class="item-name">
+                            <img src="https://cdn-icons-png.flaticon.com/512/10007/10007074.png" alt="E-Waste" />
+                            <span>E-Waste</span>
+                        </div>
+                        <div class="item-rate">₹150 / kg</div>
+                    </div>
+                </div>
+                <button class="btn-outline w-100 mt-4">View All Rates</button>
+            </section>
+
+            <!-- Live Tracking Map -->
+            <section class="live-tracking glass">
+                <div class="section-header">
+                    <h2>Live Recycler Tracking</h2>
+                    <span class="badge accepted" id="trackerStatus">Awaiting Assignment</span>
+                </div>
+                <div id="householdMap"
+                    style="height:300px;border-radius:var(--radius-md);background:#e2e8f0;z-index:1;"></div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- ════════════════════════════════════
+       PICKUP MODAL
+  ════════════════════════════════════ -->
+    <div class="modal-overlay" id="pickupModal">
+        <div class="modal-content glass-strong" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Schedule a Pickup</h2>
+                <button class="close-modal" id="closeModalBtn"><i class="ph ph-x"></i></button>
+            </div>
+            <form class="pickup-form" id="pickupForm">
+
+                <!-- AI Smart Estimation Section -->
+                <div class="form-group"
+                    style="background: rgba(19, 136, 8, 0.05); border: 1.5px dashed var(--clr-green); padding: 15px; border-radius: var(--radius-md);">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <label style="margin-bottom: 0px; color: var(--clr-green); font-weight: 700;">
+                            <i class="ph-fill ph-magic-wand"></i> AI Waste Estimator
+                        </label>
+                        <span
+                            style="font-size: 0.75rem; background: var(--clr-green); color: white; padding: 2px 6px; border-radius: 10px;">BETA</span>
+                    </div>
+
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">Upload a photo of your
+                        sorted waste. Our AI will automatically estimate the weight and your payout!</p>
+
+                    <input type="file" id="wasteImageInput" accept="image/*" style="display: none;" />
+                    <button type="button" class="btn-outline w-100" id="uploadPhotoBtn"
+                        style="border-color: var(--clr-green); color: var(--clr-green);">
+                        <i class="ph ph-camera"></i> Take Photo or Upload Image
+                    </button>
+
+                    <!-- AI Loading State -->
+                    <div id="aiLoadingState" style="display: none; text-align: center; padding: 15px 0;">
+                        <i class="ph ph-spinner ph-spin" style="font-size: 2rem; color: var(--clr-green);"></i>
+                        <p style="font-size: 0.9rem; margin-top: 5px; color: var(--clr-navy);">Scanning image with
+                            TensorFlow...</p>
+                    </div>
+
+                    <!-- AI Result Image Preview & Data -->
+                    <div id="aiResultContainer"
+                        style="display: none; margin-top: 15px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <div style="position: relative;">
+                            <img id="wasteImagePreview" src="" alt="Waste Preview"
+                                style="width: 100%; height: 180px; object-fit: cover; display: block;" />
+                            <!-- We will draw bounding boxes over this using canvas in JS -->
+                            <canvas id="aiCanvasOverlay"
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+                        </div>
+                        <div style="padding: 12px; display: flex; justify-content: space-between; background: #fdfdfd;">
+                            <div>
+                                <span
+                                    style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Est.
+                                    Weight</span>
+                                <strong id="aiEstimatedWeight" style="color: var(--clr-navy);">-- kg</strong>
+                            </div>
+                            <div style="text-align: right;">
+                                <span
+                                    style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Est.
+                                    Payout</span>
+                                <strong id="aiEstimatedPrice" style="color: var(--clr-green);">₹ --</strong>
+                            </div>
+                        </div>
+                        <!-- Hidden inputs to submit with form -->
+                        <input type="hidden" id="hiddenEstimatedWeight" name="estimated_weight" value="0" />
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Select Main Waste Category</label>
+                    <div class="waste-selector">
+                        <label class="waste-checkbox">
+                            <!-- In a real app we'd allow multiple, but let's stick to radio for simpler AI price calc in this demo -->
+                            <input type="radio" name="waste_type" value="plastic" checked />
+                            <div class="checkbox-visual"><i class="ph ph-bottle"></i> <span>Plastic</span></div>
+                        </label>
+                        <label class="waste-checkbox">
+                            <input type="radio" name="waste_type" value="paper" />
+                            <div class="checkbox-visual"><i class="ph ph-newspaper"></i> <span>Paper</span></div>
+                        </label>
+                        <label class="waste-checkbox">
+                            <input type="radio" name="waste_type" value="ewaste" />
+                            <div class="checkbox-visual"><i class="ph ph-desktop"></i> <span>E-Waste</span></div>
+                        </label>
+                        <label class="waste-checkbox">
+                            <input type="radio" name="waste_type" value="metal" />
+                            <div class="checkbox-visual"><i class="ph ph-wrench"></i> <span>Metal</span></div>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pickupDate">Preferred Date</label>
+                        <input type="date" id="pickupDate" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="pickupTime">Time Slot</label>
+                        <select id="pickupTime" required>
+                            <option value="">Select time...</option>
+                            <option value="morning">Morning (9 AM – 12 PM)</option>
+                            <option value="afternoon">Afternoon (1 PM – 4 PM)</option>
+                            <option value="evening">Evening (5 PM – 8 PM)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="pickupAddress">Pickup Address</label>
+                    <select id="pickupAddress">
+                        <option value="home">Home (A-12, Vasant Kunj, New Delhi)</option>
+                        <option value="office">Office (Cyber Hub, Gurugram)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary w-100" id="submitPickupBtn">
+                    <i class="ph ph-check"></i> Confirm Booking
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leaflet & Socket.io -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <!-- TensorFlow.js & Models -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <!-- ════════════════════════════════════
+       ALL JAVASCRIPT
+  ════════════════════════════════════ -->
+    <script src="./js/supabase-config.js"></script>
+    <script src="./js/auth-guard.js?v=2"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+
+</html>

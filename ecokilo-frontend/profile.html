@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoKilo | Profile & History</title>
+
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./css/style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase-config.js"></script>
+    <script src="./js/auth-guard.js?v=2"></script>
+    <script src="./js/api.js"></script>
+
+    <style>
+        .profile-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            padding: 0 20px;
+        }
+
+        @media (max-width: 768px) {
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .profile-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .avatar-wrapper {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+        }
+
+        .avatar-wrapper img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--clr-saffron);
+            background: #fff;
+        }
+
+        .upload-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: var(--clr-saffron);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 3px solid white;
+            transition: all 0.2s ease;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.1);
+            background: #e68000;
+        }
+
+        .form-group input {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        /* History Table */
+        .history-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 15px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-clr);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="ph-fill ph-leaf brand-icon"></i>
+                <span>Eco<span>Kilo</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Dashboard</a>
+                <a href="pickups.html">Pickups</a>
+                <a href="rewards.html">Rewards</a>
+                <a href="leaderboard.html">Leaderboard</a>
+                <a href="profile.html" class="active">Profile</a>
+            </div>
+            <div class="nav-profile">
+                <!-- Sign Out -->
+                <button onclick="window.db.auth.signOut().then(() => window.location.href='login.html')"
+                    class="btn-outline" style="padding: 6px 14px; font-size: 0.9rem;">Sign Out</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="profile-container">
+        <!-- Profile Form Card -->
+        <div class="profile-card">
+            <div class="avatar-wrapper">
+                <img id="profileImagePreview" src="https://ui-avatars.com/api/?name=User&background=138808&color=fff"
+                    alt="Profile">
+                <label for="avatarUpload" class="upload-btn" title="Change Photo">
+                    <i class="ph ph-camera"></i>
+                </label>
+                <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+            </div>
+
+            <h2 id="displayName" style="margin-bottom: 5px;">Loading...</h2>
+            <p id="displayRole" class="text-muted" style="margin-bottom: 25px;">Household</p>
+
+            <form id="profileForm" style="text-align: left;">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="fullNameInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="phoneInput" placeholder="+91 xxxxxxxxxx">
+                </div>
+                <button type="submit" class="btn-primary w-100" id="saveProfileBtn">Save Changes</button>
+            </form>
+        </div>
+
+        <!-- History Ledger Card -->
+        <div class="history-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Transaction History</h2>
+                <div class="wallet-badge" style="font-size: 1.1rem; padding: 8px 15px;">
+                    <i class="ph ph-wallet"></i>
+                    <span id="historyWalletBalance">₹ 0.00</span>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                <i class="ph ph-spinner ph-spin" style="font-size: 2rem;"></i>
+                                <p>Loading history...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script for Profile Logic -->
+    <script src="./js/profile.js"></script>
+</body>
+
+</html>

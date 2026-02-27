@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoKilo | Admin Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="./css/style.css">
+
+    <!-- Supabase Client & Auth Guard -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase-config.js"></script>
+    <script src="./js/auth-guard.js"></script>
+    <script src="./js/api.js"></script>
+</head>
+
+<body style="background-image: none; background-color: #f8fafc;">
+    <div style="display: flex; min-height: 100vh;">
+        <!-- Sidebar -->
+        <aside style="width: 250px; background: white; border-right: 1px solid var(--border-clr); padding: 20px;">
+            <div class="logo" style="margin-bottom: 40px;">
+                <i class="ph-fill ph-leaf brand-icon" style="color: var(--clr-navy)"></i>
+                <span>Eco<span>Kilo</span></span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="#" class="btn-primary"
+                    style="justify-content: flex-start; background: var(--clr-navy); box-shadow: none;"><i
+                        class="ph ph-squares-four"></i> Overview</a>
+                <a href="#" class="btn-outline" style="border: none; text-align: left;"><i class="ph ph-users"></i>
+                    Users</a>
+                <a href="#" class="btn-outline" style="border: none; text-align: left;"><i class="ph ph-truck"></i>
+                    Pickups</a>
+                <a href="#" class="btn-outline" style="border: none; text-align: left;"><i class="ph ph-tag"></i> Scrap
+                    Rates</a>
+                <a href="#" class="btn-outline" style="border: none; text-align: left;"><i
+                        class="ph ph-chart-line-up"></i> Analytics</a>
+            </div>
+
+            <div style="position: absolute; bottom: 20px;">
+                <button onclick="window.db.auth.signOut().then(() => window.location.href='login.html')"
+                    class="btn-outline" style="border: none; text-align: left;"><i class="ph ph-sign-out"></i>
+                    Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main style="flex: 1; padding: 40px;">
+            <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+                <h1 id="welcomeHeading" style="color: var(--clr-navy);">Platform Overview</h1>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button
+                        style="border: none; background: white; padding: 8px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer;"><i
+                            class="ph ph-bell" style="font-size: 1.2rem;"></i></button>
+                    <div class="profile-circle">
+                        <a href="profile.html"><img id="navProfileImage"
+                                src="https://ui-avatars.com/api/?name=Admin&background=000080&color=fff"
+                                alt="Admin"></a>
+                    </div>
+                </div>
+            </header>
+
+            <div class="impact-metrics" style="margin-bottom: 40px;">
+                <div class="metric-card glass-strong">
+                    <div class="metric-icon points-bg"><i class="ph ph-users"></i></div>
+                    <div class="metric-info">
+                        <p class="metric-label">Total Users</p>
+                        <h2 class="metric-value" id="adminTotalUsers">--</h2>
+                    </div>
+                </div>
+                <div class="metric-card glass-strong">
+                    <div class="metric-icon leaf-bg"><i class="ph ph-truck"></i></div>
+                    <div class="metric-info">
+                        <p class="metric-label">Pickups Today</p>
+                        <h2 class="metric-value" id="adminPickupsToday">--</h2>
+                    </div>
+                </div>
+                <div class="metric-card glass-strong">
+                    <div class="metric-icon coin-bg"><i class="ph ph-coins"></i></div>
+                    <div class="metric-info">
+                        <p class="metric-label">Volume Processed</p>
+                        <h2 class="metric-value"><span id="adminVolume">--</span> <span class="unit">kg</span></h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-strong" style="padding: 25px;">
+                <div class="section-header">
+                    <h2>Recent Registration Requests (Recyclers)</h2>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <tr style="border-bottom: 1px solid var(--border-clr); color: var(--text-muted);">
+                        <th style="padding: 12px 10px;">Name</th>
+                        <th style="padding: 12px 10px;">Vehicle Type</th>
+                        <th style="padding: 12px 10px;">Zone</th>
+                        <th style="padding: 12px 10px;">Status</th>
+                        <th style="padding: 12px 10px;">Action</th>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-clr);">
+                        <td style="padding: 15px 10px; font-weight: 500;">Ramesh Singh</td>
+                        <td style="padding: 15px 10px;">E-Rickshaw Loader</td>
+                        <td style="padding: 15px 10px;">Dwarka Sector 10</td>
+                        <td style="padding: 15px 10px;"><span class="badge"
+                                style="background: #fff4e6; color: var(--clr-saffron);">Pending Verify</span></td>
+                        <td style="padding: 15px 10px;">
+                            <button
+                                style="border: none; background: var(--clr-green-light); color: var(--clr-green); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Outfit', sans-serif;">Approve</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 10px; font-weight: 500;">Arjun Das</td>
+                        <td style="padding: 15px 10px;">Chota Hathi (Mini Truck)</td>
+                        <td style="padding: 15px 10px;">Noida Sector 62</td>
+                        <td style="padding: 15px 10px;"><span class="badge"
+                                style="background: #fff4e6; color: var(--clr-saffron);">Pending Verify</span></td>
+                        <td style="padding: 15px 10px;">
+                            <button
+                                style="border: none; background: var(--clr-green-light); color: var(--clr-green); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Outfit', sans-serif;">Approve</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="./js/admin.js"></script>
+</body>
+
+</html>

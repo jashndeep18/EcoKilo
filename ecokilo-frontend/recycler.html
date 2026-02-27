@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoKilo | Recycler Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Leaflet Maps CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./css/style.css">
+
+    <!-- Supabase Client & Auth Guard -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase-config.js"></script>
+    <script src="./js/auth-guard.js"></script>
+    <script src="./js/api.js"></script>
+
+    <style>
+        .map-container {
+            width: 100%;
+            height: 300px;
+            background: #e2e8f0;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/b/bd/Google_Maps_Logo_2020.svg');
+            background-size: 50%;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.1;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar" style="border-bottom: 3px solid var(--clr-saffron);">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="ph-fill ph-leaf brand-icon" style="color: var(--clr-saffron)"></i>
+                <span>Eco<span>Kilo</span> <span
+                        style="font-size: 0.8rem; background: var(--clr-saffron); color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">RIDER</span></span>
+            </div>
+            <div class="nav-profile">
+                <a href="profile.html" title="View Profile">
+                    <img id="navProfileImage" src="https://ui-avatars.com/api/?name=Rider&background=138808&color=fff"
+                        alt="User Profile"
+                        style="width:36px; height:36px; border-radius:50%; border:2px solid var(--clr-saffron);">
+                </a>
+                <a href="login.html" class="btn-outline" style="padding: 6px 14px; font-size: 0.9rem;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <header class="welcome-header">
+            <div class="welcome-text">
+                <h1 id="welcomeHeading">Hi Rider,</h1>
+                <p>You have <span id="assignCount">0</span> pickups assigned today.</p>
+            </div>
+            <div class="status-toggle glass" style="padding: 10px 20px; display: flex; align-items: center; gap: 10px;">
+                <span style="font-weight: 600;">Status:</span>
+                <span class="text-green"><i class="ph-fill ph-circle"></i> Online</span>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <section class="glass" style="padding: 25px;">
+                <div class="section-header">
+                    <h2>Live Route</h2>
+                </div>
+
+                <div id="recyclerMap">
+                    <!-- Leaflet MAP renders here -->
+                </div>
+
+                <div id="dynamicAssignmentsContainer">
+                    <!-- Loaded dynamically from recycler.js via API -->
+                    <p style="color: var(--text-muted); padding: 10px;">Loading assignments from Escrow engine...</p>
+                </div>
+            </section>
+
+            <section class="glass" style="padding: 25px;">
+                <div class="section-header">
+                    <h2>Total Earnings</h2>
+                </div>
+                <h2 id="totalEarningsDisplay" style="font-size: 2.5rem; color: var(--clr-green); margin-bottom: 20px;">₹
+                    0.00</h2>
+
+                <h3 style="margin-bottom: 15px; font-size: 1rem;">Recent Payouts</h3>
+                <div class="activity-list">
+                    <div class="activity-item">
+                        <div class="activity-icon status-completed">
+                            <i class="ph ph-check-circle"></i>
+                        </div>
+                        <div class="activity-details">
+                            <h4>Sector 14, Gurugram</h4>
+                            <p>15 kg • Cardboard</p>
+                        </div>
+                        <div class="activity-status">
+                            <span class="amount text-green">₹ 180</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ════════════════════════════════════
+             ESCROW SYSTEM UI
+        ════════════════════════════════════ -->
+        <div style="margin-top: 30px;">
+            <div class="section-header" style="margin-bottom: 15px;">
+                <h2><i class="ph-fill ph-lock-key"></i> Escrow Vault</h2>
+                <span class="update-badge" style="background: rgba(30,58,138,0.1); color: var(--clr-navy);">Protected by
+                    EcoKilo</span>
+            </div>
+
+            <!-- Escrow Summary Cards -->
+            <section class="impact-metrics" style="margin-bottom: 20px;">
+                <div class="metric-card glass">
+                    <div class="metric-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;"><i
+                            class="ph ph-hourglass-high"></i></div>
+                    <div class="metric-info">
+                        <p class="metric-label">Total Locked (Est)</p>
+                        <h2 class="metric-value" id="escrowTotalLocked">₹ 0</h2>
+                    </div>
+                </div>
+                <div class="metric-card glass">
+                    <div class="metric-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><i
+                            class="ph ph-shield-check"></i></div>
+                    <div class="metric-info">
+                        <p class="metric-label">Security Deposits</p>
+                        <h2 class="metric-value" id="escrowTotalDeposits">₹ 0</h2>
+                    </div>
+                </div>
+                <div class="metric-card glass">
+                    <div class="metric-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;"><i
+                            class="ph ph-check-circle"></i></div>
+                    <div class="metric-info">
+                        <p class="metric-label">Total Released</p>
+                        <h2 class="metric-value" id="escrowTotalReleased">₹ 0</h2>
+                    </div>
+                </div>
+                <div class="metric-card glass">
+                    <div class="metric-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;"><i
+                            class="ph ph-warning-circle"></i></div>
+                    <div class="metric-info">
+                        <p class="metric-label">Active Disputes</p>
+                        <h2 class="metric-value" id="escrowTotalDisputes">0</h2>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Escrow Data Table -->
+            <section class="glass" style="padding: 20px; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <th
+                                style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">
+                                Tracking ID</th>
+                            <th
+                                style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">
+                                Household</th>
+                            <th
+                                style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">
+                                Est. Amount</th>
+                            <th
+                                style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">
+                                My Deposit</th>
+                            <th
+                                style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">
+                                Status</th>
+                            <th
+                                style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">
+                                Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="escrowTableBody">
+                        <tr>
+                            <td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Loading
+                                live escrow contracts...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </main>
+
+    <!-- Socket.io and Leaflet Scripts -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <!-- Live GPS Emission Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup Map
+            const map = L.map('recyclerMap').setView([28.6139, 77.2090], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            const riderIcon = L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/3204/3204000.png',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40]
+            });
+
+            let marker = null;
+
+            let socket = null;
+            let watchId = null;
+
+            window.startEmitting = (pickupId) => {
+                if (socket) return; // Already emitting
+
+                // Connect to Socket server
+                socket = io('http://localhost:5000');
+
+                socket.on('connect', () => {
+                    console.log('Connected to Dispatch Server for pickup: ' + pickupId);
+                    socket.emit('join_pickup', { pickup_id: pickupId, role: 'recycler' });
+
+                    // Start watching location
+                    if (navigator.geolocation) {
+                        watchId = navigator.geolocation.watchPosition((position) => {
+                            const { latitude, longitude } = position.coords;
+
+                            // Update UI Map
+                            if (!marker) {
+                                marker = L.marker([latitude, longitude], { icon: riderIcon }).addTo(map);
+                            } else {
+                                marker.setLatLng([latitude, longitude]);
+                            }
+                            map.panTo([latitude, longitude]);
+
+                            // Emit to server
+                            socket.emit('send_location', {
+                                pickup_id: pickupId, // Send to specific room
+                                lat: latitude,
+                                lng: longitude
+                            });
+                            console.log(`📡 Emitted location: ${latitude}, ${longitude}`);
+
+                        }, (error) => {
+                            console.error('GPS Error: ', error);
+                        }, {
+                            enableHighAccuracy: true,
+                            maximumAge: 0
+                        });
+                    } else {
+                        alert('Geolocation is not supported by your browser');
+                    }
+                });
+            };
+        });
+    </script>
+    <script src="./js/recycler.js"></script>
+</body>
+
+</html>
